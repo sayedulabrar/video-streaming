@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DASH Video Player</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dashjs/5.0.3/legacy/umd/dash.all.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        #status {
+            margin-top: 10px;
+            color: #333;
+        }
+        #videoPlayer {
+            width: 640px;
+            height: 360px;
+            display: none;
+            background: black;
+        }
+        #qualitySelect {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Video Streaming</h2>
+    <form id="uploadForm" enctype="multipart/form-data">
+        <input type="file" id="videoFile" name="video" accept="video/*" required>
+        <button type="submit">Upload Video</button>
+    </form>
+    <div id="status">No video available. Please upload a video.</div>
+    <video id="videoPlayer" controls></video>
+    <div id="qualityControls" style="display: none;">
+        <label for="qualitySelect">Select Quality: </label>
+        <select id="qualitySelect" onchange="changeQuality()">
+            <option value="-1">Auto</option>
+        </select>
+    </div>
+    <script>
+        const uploadForm = document.getElementById('uploadForm');
+        const statusDiv = document.getElementById('status');
+        const videoPlayer = document.getElementById('videoPlayer');
+        const qualityControls = document.getElementById('qualityControls');
+        const qualitySelect = document.getElementById('qualitySelect');
+        const videoUrl = 'http://localhost:3000/api/video.mpd';
+        let player = null;
+
+        // Check if video.mpd exists on page load and initialize player
+        fetch(videoUrl)
+            .then(response => {
+                if (response.ok) {
+                    initializePlayer();
+                } else {
+                    statusDiv.textContent = 'No video available. Please upload a video.';
+                }
+            })
+            .catch(() => {
+                statusDiv.textContent = 'No video available. Please upload a video.';
+            });
+
+        // Handle video upload
+        uploadForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const formData = new FormData(uploadForm);
+            statusDiv.textContent = 'Uploading video...';
+
+            try {
+                const response = await fetch('http://localhost:3000/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (response.ok) {
+                    const taskId = result.taskId;
+                    statusDiv.textContent = `Video uploaded. Processing started (Task ID: ${taskId})`;
+                    pollStatus(taskId);
+                } else {
+                    statusDiv.textContent = `Upload failed: ${result.error}`;
+                }
+            } catch (err) {
+                statusDiv.textContent = `Upload error: ${err.message}`;
+            }
+        });
+
+        // Poll processing status
+        async function pollStatus(taskId) {
+            const statusUrl = `http://localhost:3000/api/status/${taskId}`;
+            const interval = setInterval(async () => {
+                try {
+                    const response = await fetch(statusUrl);
+                    const status = await response.json();
+
+                    if (response.ok) {
+                        statusDiv.textContent = status.message;
+                        if (status.status === 'completed') {
+                            clearInterval(interval);
+                            initializePlayer();
+                        } else if (status.status === 'failed') {
+                            clearInterval(interval);
+                        }
+                    } else {
+                        statusDiv.textContent = `Status check failed: ${status.error}`;
+                        clearInterval(interval);
+                    }
+                } catch (err) {
+                    statusDiv.textContent = `Status check error: ${err.message}`;
+                    clearInterval(interval);
+                }
+            }, 2000);
+        }
+
+        // Initialize DASH player and quality dropdown
+        function initializePlayer() {
+            if (player) {
+                player.reset();
+            }
+
+            videoPlayer.style.display = 'block';
+
+            player = dashjs.MediaPlayer().create();
+            player.updateSettings({ streaming: { abr: { autoSwitchBitrate: { video: true } } } });
+
+            player.initialize(videoPlayer, videoUrl, true);
+
+            // Clear existing quality options except Auto
+            qualitySelect.innerHTML = '<option value="-1">Auto</option>';
+
+            player.on(dashjs.MediaPlayer.events.STREAM_INITIALIZED, () => {
+                console.log(player.getRepresentationsByType('video'));
+                
+                const bitrates = player.getRepresentationsByType('video');
+
+                // Sort bitrates ascending by height (resolution)
+                bitrates.sort((a, b) => a.height - b.height);
+
+                // Add qualities to dropdown
+                bitrates.forEach((br, index) => {
+                    // Example label: 360p (800 kbps)
+                    const label = `${br.height}p (${br.bitrateInKbit} kbps)`;
+                    const option = document.createElement('option');
+                    option.value = br.qualityIndex;
+                    option.textContent = label;
+                    qualitySelect.appendChild(option);
+                });
+
+                qualityControls.style.display = 'block';
+                statusDiv.textContent = 'Video ready to play.';
+            });
+
+            // Listen for quality change event from player
+            player.on(dashjs.MediaPlayer.events.QUALITY_CHANGE_RENDERED, (e) => {
+                if (e.mediaType === 'video') {
+                    // Update dropdown selection to current quality
+                    qualitySelect.value = e.newQuality;
+                }
+            });
+        }
+        
+        // Change quality manually based on dropdown selection
+        function changeQuality() {
+            if (!player) return;
+
+            const selectedIndex = parseInt(qualitySelect.value, 10); // This is now the array index
+
+            if (selectedIndex === -1) {
+                // Auto quality mode
+                player.updateSettings({
+                    streaming: {
+                        abr: {
+                            autoSwitchBitrate: { video: true, audio: true } // Enable auto-switching for video and audio [4]
+                        }
+                    }
+                });
+                statusDiv.textContent = 'Switched to Auto quality.';
+            } else {
+                // Manual quality mode
+                player.updateSettings({
+                    streaming: {
+                        abr: {
+                            autoSwitchBitrate: { video: false, audio: true } // Disable auto-switching for video, keep audio auto [4]
+                        }
+                    }
+                });
+                // Use setRepresentationForTypeByIndex with the array index [3]
+                player.setRepresentationForTypeByIndex('video', selectedIndex);
+                statusDiv.textContent = `Switched to quality index ${selectedIndex}.`;
+            }
+        }
+    </script>
+</body>
+</html>
