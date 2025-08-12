@@ -14,7 +14,7 @@ const upload = multer({
             cb(new Error('Only video files are allowed'));
         }
     },
-    limits: { fileSize: 100 * 1024 * 1024 } // 100MB limit
+    limits: { fileSize: 100 * 1024 * 1024 } 
 });
 
 router.post('/upload', upload.single('video'), uploadVideo);

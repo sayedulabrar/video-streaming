@@ -11,6 +11,8 @@ const uploadVideo = async (req, res) => {
     // Generate unique folder name
     const folderId = uuidv4();
     const inputPath = req.file.path;
+
+    console.log("Input file path is",inputPath);
     const outputDir = path.join(__dirname, '..', 'video', folderId);
 
     // Create folder if it doesn't exist

@@ -23,6 +23,8 @@ const processVideo = async (inputPath, outputPath) => {
   const taskId = uuidv4();
   const outputDir = path.dirname(outputPath);
 
+  console.log("Directory name",outputDir);
+
   if (!fs.existsSync(outputDir)) {
     fs.mkdirSync(outputDir, { recursive: true });
   }
@@ -36,13 +38,10 @@ const processVideo = async (inputPath, outputPath) => {
   const ffmpegArgs = [
     '-i', inputPath,
 
-    // 360p
     '-map', '0:v', '-b:v:0', '800k', '-s:v:0', '640x360', '-aspect:v:0', '16:9', '-c:v:0', 'libx264', '-profile:v:0', 'main', '-preset', 'fast', '-keyint_min', '48', '-g', '48', '-sc_threshold', '0',
 
-    // 480p
     '-map', '0:v', '-b:v:1', '1400k', '-s:v:1', '852x480', '-aspect:v:1', '16:9', '-c:v:1', 'libx264', '-profile:v:1', 'main', '-preset', 'fast', '-keyint_min', '48', '-g', '48', '-sc_threshold', '0',
 
-    // 720p
     '-map', '0:v', '-b:v:2', '2800k', '-s:v:2', '1280x720', '-aspect:v:2', '16:9', '-c:v:2', 'libx264', '-profile:v:2', 'main', '-preset', 'fast', '-keyint_min', '48', '-g', '48', '-sc_threshold', '0',
   
   ];
@@ -83,6 +82,8 @@ const processVideo = async (inputPath, outputPath) => {
     if (code === 0) {
       global.taskStatus[taskId] = { status: 'completed', message: 'Video processing completed successfully' };
       console.log(`FFmpeg task ${taskId} completed`);
+
+      
       fs.unlink(inputPath, (err) => {
         if (err) console.error('Error deleting uploaded file:', err);
       });
