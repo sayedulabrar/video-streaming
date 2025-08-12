@@ -19,7 +19,7 @@ const upload = multer({
 
 router.post('/upload', upload.single('video'), uploadVideo);
 router.get('/status/:taskId', getTaskStatus);
-router.get('/video.mpd', getDashManifest);
-router.get('/:segment', getDashSegment);
+router.get('/video/:folderId/video.mpd', getDashManifest);
+router.get('/video/:folderId/:segment', getDashSegment);
 
 module.exports = router;

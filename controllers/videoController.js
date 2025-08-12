@@ -1,20 +1,29 @@
 const path = require('path');
 const fs = require('fs');
 const { processVideo } = require('../services/ffmpegService');
+const { v4: uuidv4 } = require('uuid');
 
 const uploadVideo = async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ error: 'No video file uploaded' });
     }
 
+    // Generate unique folder name
+    const folderId = uuidv4();
     const inputPath = req.file.path;
-    const outputDir = path.join(__dirname, '..', 'video');
+    const outputDir = path.join(__dirname, '..', 'video', folderId);
+
+    // Create folder if it doesn't exist
+    fs.mkdirSync(outputDir, { recursive: true });
+
     const outputPath = path.join(outputDir, 'video.mpd');
-    console.log(inputPath);
-    console.log(outputDir);
+
     const taskId = await processVideo(inputPath, outputPath);
 
-    res.json({ message: 'Video uploaded, processing started', taskId });
+    res.json({
+        message: 'Video uploaded, processing started',
+        taskId,
+    });
 };
 
 const getTaskStatus = (req, res) => {
@@ -29,7 +38,8 @@ const getTaskStatus = (req, res) => {
 };
 
 const getDashManifest = (req, res) => {
-    const filePath = path.join(__dirname, '..', 'video', 'video.mpd');
+    const { folderId } = req.params; 
+    const filePath = path.join(__dirname, '..', 'video', folderId, 'video.mpd');
 
     if (!fs.existsSync(filePath)) {
         return res.status(404).json({ error: 'DASH manifest not found' });
@@ -44,9 +54,10 @@ const getDashManifest = (req, res) => {
     });
 };
 
+
 const getDashSegment = (req, res) => {
-    const segment = req.params.segment;
-    const filePath = path.join(__dirname, '..', 'video', segment);
+    const {folderId,segment }  = req.params;
+    const filePath = path.join(__dirname, '..', 'video',folderId, segment);
 
     if (!fs.existsSync(filePath)) {
         return res.status(404).json({ error: 'Segment file not found' });

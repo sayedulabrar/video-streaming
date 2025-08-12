@@ -44,6 +44,7 @@ const processVideo = async (inputPath, outputPath) => {
 
     // 720p
     '-map', '0:v', '-b:v:2', '2800k', '-s:v:2', '1280x720', '-aspect:v:2', '16:9', '-c:v:2', 'libx264', '-profile:v:2', 'main', '-preset', 'fast', '-keyint_min', '48', '-g', '48', '-sc_threshold', '0',
+  
   ];
 
   if (audioExists) {
@@ -59,7 +60,14 @@ const processVideo = async (inputPath, outputPath) => {
     );
   }
 
-  ffmpegArgs.push('-f', 'dash', outputPath);
+  ffmpegArgs.push(
+    '-use_template', '1',
+    '-use_timeline', '1',
+    '-init_seg_name', 'init-stream$RepresentationID$.m4s',
+    '-media_seg_name', 'chunk-stream$RepresentationID$-$Number%05d$.m4s',
+    '-f', 'dash',
+    outputPath
+  );
 
   const ffmpeg = spawn('ffmpeg', ffmpegArgs);
 

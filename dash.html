@@ -29,7 +29,13 @@
         <input type="file" id="videoFile" name="video" accept="video/*" required>
         <button type="submit">Upload Video</button>
     </form>
+    <div style="margin-top: 15px;">
+        <label for="folderInput"><strong>Folder Name:</strong></label>
+        <input type="text" id="folderInput" placeholder="Enter folder name" />
+        <button id="playBtn" type="button">Play Video</button>
+    </div>
     <div id="status">No video available. Please upload a video.</div>
+    <div id="playingFolder" style="margin: 10px 0; font-weight: bold;"></div>
     <video id="videoPlayer" controls></video>
     <div id="qualityControls" style="display: none;">
         <label for="qualitySelect">Select Quality: </label>
@@ -43,21 +49,33 @@
         const videoPlayer = document.getElementById('videoPlayer');
         const qualityControls = document.getElementById('qualityControls');
         const qualitySelect = document.getElementById('qualitySelect');
-        const videoUrl = 'http://localhost:3000/api/video.mpd';
+        const folderInput = document.getElementById('folderInput');
+        const playBtn = document.getElementById('playBtn');
+        const playingFolder = document.getElementById('playingFolder');
         let player = null;
+        let selectedFolder = "";
+        let bitrates = [];
 
         // Check if video.mpd exists on page load and initialize player
-        fetch(videoUrl)
-            .then(response => {
-                if (response.ok) {
-                    initializePlayer();
-                } else {
-                    statusDiv.textContent = 'No video available. Please upload a video.';
-                }
-            })
-            .catch(() => {
-                statusDiv.textContent = 'No video available. Please upload a video.';
-            });
+        function checkAndInitPlayer() {
+            if (!selectedFolder) return;
+            const videoUrl = `http://localhost:3000/api/video/${selectedFolder}/video.mpd`;
+            fetch(videoUrl)
+                .then(response => {
+                    if (response.ok) {
+                        initializePlayer(videoUrl);
+                    } else {
+                        statusDiv.textContent = 'No video available in this folder. Please upload a video.';
+                        videoPlayer.style.display = 'none';
+                        qualityControls.style.display = 'none';
+                    }
+                })
+                .catch(() => {
+                    statusDiv.textContent = 'No video available in this folder. Please upload a video.';
+                    videoPlayer.style.display = 'none';
+                    qualityControls.style.display = 'none';
+                });
+        }
 
         // Handle video upload
         uploadForm.addEventListener('submit', async (event) => {
@@ -96,7 +114,7 @@
                         statusDiv.textContent = status.message;
                         if (status.status === 'completed') {
                             clearInterval(interval);
-                            initializePlayer();
+                            checkAndInitPlayer();
                         } else if (status.status === 'failed') {
                             clearInterval(interval);
                         }
@@ -112,7 +130,7 @@
         }
 
         // Initialize DASH player and quality dropdown
-        function initializePlayer() {
+        function initializePlayer(videoUrl) {
             if (player) {
                 player.reset();
             }
@@ -120,44 +138,70 @@
             videoPlayer.style.display = 'block';
 
             player = dashjs.MediaPlayer().create();
-            player.updateSettings({ streaming: { abr: { autoSwitchBitrate: { video: true } } } });
 
-            player.initialize(videoPlayer, videoUrl, true);
+            // Disable ABR early
+            player.updateSettings({
+                streaming: {
+                    abr: {
+                        autoSwitchBitrate: { video: false, audio: true }
+                    }
+                }
+            });
 
-            // Clear existing quality options except Auto
+            player.initialize(videoPlayer, videoUrl, false);
+
             qualitySelect.innerHTML = '<option value="-1">Auto</option>';
 
-            player.on(dashjs.MediaPlayer.events.STREAM_INITIALIZED, () => {
-                console.log(player.getRepresentationsByType('video'));
-                
-                const bitrates = player.getRepresentationsByType('video');
+            // Set manual quality as soon as manifest is loaded
+            player.on(dashjs.MediaPlayer.events.MANIFEST_LOADED, () => {
+                player.setRepresentationForTypeByIndex('video', 0);
+                qualitySelect.value = 0;
+                console.log('MANIFEST_LOADED: forcing quality to 360p (index 0)');
+            });
 
-                // Sort bitrates ascending by height (resolution)
+            player.on(dashjs.MediaPlayer.events.STREAM_INITIALIZED, () => {
+                bitrates = player.getRepresentationsByType('video');
+                console.log('Video qualities:', bitrates);
                 bitrates.sort((a, b) => a.height - b.height);
 
-                // Add qualities to dropdown
-                bitrates.forEach((br, index) => {
-                    // Example label: 360p (800 kbps)
+                qualitySelect.innerHTML = '<option value="-1">Auto</option>';
+                
+                bitrates.forEach((br) => {
                     const label = `${br.height}p (${br.bitrateInKbit} kbps)`;
                     const option = document.createElement('option');
-                    option.value = br.qualityIndex;
+                    option.value = br.index;
                     option.textContent = label;
                     qualitySelect.appendChild(option);
                 });
 
                 qualityControls.style.display = 'block';
-                statusDiv.textContent = 'Video ready to play.';
+                statusDiv.textContent = 'Video ready to play at 360p.';
+
+                videoPlayer.play();
             });
 
-            // Listen for quality change event from player
             player.on(dashjs.MediaPlayer.events.QUALITY_CHANGE_RENDERED, (e) => {
                 if (e.mediaType === 'video') {
-                    // Update dropdown selection to current quality
-                    qualitySelect.value = e.newQuality;
+                    console.log("new quality", e.newRepresentation.index);
+                    const idx = bitrates.findIndex(br => br.index === e.newRepresentation.index);
+                    qualitySelect.value = idx >= 0 ? idx : '-1';
                 }
             });
         }
-        
+
+
+        playBtn.addEventListener('click', () => {
+            selectedFolder = folderInput.value.trim();
+            if (selectedFolder) {
+                playingFolder.textContent = `Playing from folder: ${selectedFolder}`;
+                checkAndInitPlayer();
+            } else {
+                playingFolder.textContent = "";
+                videoPlayer.style.display = 'none';
+                qualityControls.style.display = 'none';
+            }
+        });
+
         // Change quality manually based on dropdown selection
         function changeQuality() {
             if (!player) return;

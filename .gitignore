@@ -1,6 +1,7 @@
 # Node modules
 node_modules/
-
+video/
+*.mp4
 # Logs
 logs
 *.log
