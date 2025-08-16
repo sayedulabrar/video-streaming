@@ -58,17 +58,22 @@
             display: flex;
             align-items: center;
             position: relative;
+            margin: 0 10px;
         }
         #progress {
             flex: 1;
-            margin: 0 10px;
             -webkit-appearance: none;
             background: transparent;
+            margin: 0; /*Needed for making sure the width of buffer, progress same. */
             height: 5px;
+            width: 100%;
+            box-sizing: border-box;
         }
         #progress::-webkit-slider-runnable-track {
+            width: 100%;
             background: #ddd;
             height: 5px;
+            border-radius: 2.5px;
         }
         #progress::-webkit-slider-thumb {
             -webkit-appearance: none;
@@ -80,10 +85,22 @@
             position: relative;
             z-index: 100;
         }
+
+        #progress::-moz-range-track {
+            width: 100%;
+            background: #ddd;
+            height: 5px;
+            border-radius: 2.5px;
+        }
+
+        #progress::-ms-fill-lower,
+        #progress::-ms-fill-upper {
+            background: #ddd;
+            height: 5px;
+            border-radius: 2.5px;
+        }
         #bufferProgress {
             position: absolute;
-            left: 10px;
-            right: 10px;
             height: 5px;
             background: #aaa;
             width: 0;
@@ -384,9 +401,18 @@
                 if (videoPlayer.buffered.length > 0) {
                     const buffered = videoPlayer.buffered.end(0);
                     const bufferedPercent = (buffered / videoPlayer.duration) * 100;
-                    bufferProgress.style.width = `${bufferedPercent}%`;
+
+                    // Convert 10px to a percentage of the video player width
+                    const offsetPercent = (10 / videoPlayer.clientWidth) * 100;
+
+                    // Ensure width never exceeds 100%
+                    // const widthPercent = Math.min(bufferedPercent + offsetPercent, 100);
+                    const widthPercent = Math.min(bufferedPercent, 100);
+
+                    bufferProgress.style.width = `${widthPercent}%`;
                 }
             });
+
 
             progress.addEventListener('input', () => {
                 isSeeking = true;
