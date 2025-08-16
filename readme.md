@@ -1,5 +1,3 @@
----
-
 # 📺 Video Processing System Architecture (with Auto-Cleanup)
 
 ## 🏗️ High-Level Textual Diagram
@@ -148,4 +146,3 @@ Even with robust app-level cleanup, some objects can linger (crashes, partial up
 * **IAM:** Least privilege across services.
 * **Observability:** Metrics + logs for each stage.
 
-If you want, I can add a **separate “Lifecycle Policy” section** in the README with precise rule names, scopes (prefix filters), and suggested TTLs so your team can copy them into the console one-to-one.
