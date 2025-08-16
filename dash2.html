@@ -399,7 +399,7 @@
             // Buffer progress
             videoPlayer.addEventListener('progress', () => {
                 if (videoPlayer.buffered.length > 0) {
-                    const buffered = videoPlayer.buffered.end(0);
+                    const buffered = videoPlayer.buffered.end(videoPlayer.buffered.length - 1);//last buffered segment’s end time.
                     const bufferedPercent = (buffered / videoPlayer.duration) * 100;
 
                     // Convert 10px to a percentage of the video player width
@@ -410,6 +410,16 @@
                     const widthPercent = Math.min(bufferedPercent, 100);
 
                     bufferProgress.style.width = `${widthPercent}%`;
+
+                    for (let i = 0; i < videoPlayer.buffered.length; i++) {
+                        const start = videoPlayer.buffered.start(i);
+                        const end = videoPlayer.buffered.end(i);
+
+                        const startPercent = (start / videoPlayer.duration) * 100;
+                        const endPercent = (end / videoPlayer.duration) * 100;
+
+                        console.log(`${i} th index ${startPercent} and ${endPercent}`);
+                    }
                 }
             });
 
