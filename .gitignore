@@ -79,3 +79,4 @@ vite.config.js.timestamp-*
 # Local testing
 playwright-report/
 test-results/
+dash.html
