@@ -89,7 +89,7 @@
    - **File**: `dummy-get-presignedURL-code.ts`
   
 ```typescript
-import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, GetObjectCommand ,PutObjectCommand, ListObjectSV2Command} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 
@@ -108,15 +108,56 @@ async function getObjectUrl(key){
       Bucket: "temp.sayedulabrar14045.video",
       Key: key,
     });
-  const url=getSignedUrl(s3Client,command,{ expiresIn:20 );//20 second valid
+  const url=getSignedUrl(s3Client,command);
   
   return url;
 }
 
 
-async function init(){
-console.log("URL for graphql.jpg ".getObjectUrl("graphql.jpg") );
+async function putObjectUrl(filename,content_type){
+    const command = new PutObjectCommand({
+      Bucket: "temp.sayedulabrar14045.video",
+      Key: `uploads/user-uploads/${filename}`,
+      ContentType: content_type,
+    });
+    
+    const url=getSignedUrl(s3Client,command,{expiresIn:600});
+    return url;
 }
+
+
+async function listObjects(){
+  const command= new ListObjectSV2Command({
+      Bucket: "temp.sayedulabrar14045.video",
+      Key: `/`,
+  });
+  
+  const result=await s3Client.send(command);
+  console.log(result);
+}
+
+
+async function deleteObjectUrl(key){
+  const command = new DeleteObjectCommand({
+      Bucket: "temp.sayedulabrar14045.video",
+      Key: key,
+    });
+  await s3Client.send(command);
+  
+  return url;
+}
+
+async function init(){
+console.log("URL for uploading ", await putObjectUrl(`image-${Date.now()}.jpeg`, "image/jpeg") );
+//Now this will be the url for uploading. It will be used as put request where we will add the file.
+//After that we will get the key and pass it to get the public accessible url below. 
+
+}
+
+
+// async function init(){
+// console.log("URL for image-168425674.jpeg ",getObjectUrl("uploads/user-uploads/image-168425674.jpeg") );
+// }
 
 init();
 ```
