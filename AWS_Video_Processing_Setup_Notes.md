@@ -85,6 +85,41 @@
    npm install @types/express @types/multer -D
    ```
 4. Create the upload server code:
+
+   - **File**: `dummy-get-presignedURL-code.ts`
+  
+```typescript
+import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+
+
+//we have to give s3 full access to the iam user that we will use here.
+const s3Client = new S3Client({
+  region: "<region, e.g., us-east-1>",
+  credentials: {
+    accessKeyId: "<your-access-key-id>",
+    secretAccessKey: "<your-secret-access-key>",
+  },
+});
+
+
+async function getObjectUrl(key){
+  const command = new GetObjectCommand({
+      Bucket: "temp.sayedulabrar14045.video",
+      Key: key,
+    });
+  const url=getSignedUrl(s3Client,command,{ expiresIn:20 );//20 second valid
+  
+  return url;
+}
+
+
+async function init(){
+console.log("URL for graphql.jpg ".getObjectUrl("graphql.jpg") );
+}
+
+init();
+```
    - **File**: `video-upload-server/src/index.ts`
 ```typescript
 import express from "express";
