@@ -120,6 +120,10 @@ console.log("URL for graphql.jpg ".getObjectUrl("graphql.jpg") );
 
 init();
 ```
+
+**Upload securely in Private S3**
+<img src="./s3put.png" alt="My drawing" style="width: auto; height: auto;">
+
    - **File**: `video-upload-server/src/index.ts`
 ```typescript
 import express from "express";
