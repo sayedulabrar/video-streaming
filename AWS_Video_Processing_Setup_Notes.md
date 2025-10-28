@@ -14,6 +14,11 @@
 - **Other Settings**: Default
 - **Post-Creation**: Save the queue URL for later use.
 
+  ## Important topics of S3
+  - **AWS CloudTrail data events** : Keeps the log of which user performed which actions like get, upload, delete  etc. Useful for tracking hacked files or user responsible for this.
+    We can search CloudTrail and click on it and in left sidebar event history we can find the history if  it is already created.
+  - **Event Notifications** : we can call a lamda function in it on selected operations. 
+
 ### SQS Access Policy Configuration
 1. Navigate to **SQS** -> **Access Policy** -> **Edit**.
 2. Add the following statement to the policy's statement array to allow the S3 bucket to send messages to the SQS queue:
